@@ -9,19 +9,7 @@ from contextlib import asynccontextmanager
 cache = {}
 
 
-app = FastAPI()
 
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-scheduler = BackgroundScheduler()
 
 
 def fetch_and_cache_deals():
@@ -91,14 +79,26 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(fetch_and_cache_deals, 'interval', hours=1)
     scheduler.add_job(fetch_and_cache_stores, 'interval', hours=12)
     scheduler.start()
-
+    fetch_and_cache_deals()
+    fetch_and_cache_stores()
 
     yield
+
     scheduler.shutdown()
     print("Scheduler shut down")
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+scheduler = BackgroundScheduler()
 @app.get("/deals/")
 def get_cached_deals(store_name: str = None):
     deals = cache.get("deals")
@@ -129,3 +129,4 @@ def get_store_details():
     if stores:
         return {"source": "disk", "stores": stores}
     return {"error": "No cached stores available."}, 503
+
