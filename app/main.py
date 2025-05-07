@@ -62,17 +62,21 @@ def get_all_deals():
 async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler()
     scheduler.add_job(get_all_deals, 'interval', hours=1)
-    scheduler.add_job(get_stores,"interval",hours=12)
+    scheduler.add_job(get_stores, 'interval', hours=12)
     scheduler.start()
-    print("Running get_all_deals on startup...")
+
+
+    print("Starting background jobs for data fetching...")
     get_all_deals()
     get_stores()
+
     yield
     scheduler.shutdown()
     print("Scheduler shut down")
 
 app = FastAPI(lifespan=lifespan)
 
+# Allow CORS from all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -81,12 +85,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import JSONResponse
-
-
 @app.get("/deals/")
-def get_cached_deals(store_name: str = Query(default=None)):
+def get_cached_deals(store_name: str = None):
     deals = cache.get("deals")
     if not deals:
         return JSONResponse(content={"error": "No cached deals available."}, status_code=503)
@@ -97,7 +97,6 @@ def get_cached_deals(store_name: str = Query(default=None)):
             raise HTTPException(status_code=404, detail=f"No deals found for store '{store_name}'")
         return {"source": "disk", "deals": store_deals}
 
-
     return {"source": "disk", "deals": deals}
 
 @app.get("/deals/top")
@@ -105,7 +104,6 @@ def get_top_3_deals():
     deals = cache.get("deals")
     if not deals:
         return JSONResponse(content={"error": "No cached deals available."}, status_code=503)
-
 
     all_deals = [deal for store in deals.values() for deal in store]
     top3 = sorted(all_deals, key=lambda d: float(d.get("price", 9999)))[:3]
@@ -115,5 +113,5 @@ def get_top_3_deals():
 def get_store_details():
     stores = cache.get("stores")
     if stores:
-        return JSONResponse(content={"source":"disk", "stores":stores})
+        return JSONResponse(content={"source": "disk", "stores": stores})
     return JSONResponse(content={"error": "No cached stores available."}, status_code=503)
