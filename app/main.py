@@ -1,19 +1,44 @@
-import requests
-import time
 from fastapi import FastAPI
-from starlette.responses import JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
-from contextlib import asynccontextmanager
+import time
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
+import requests
+from contextlib import asynccontextmanager
 
 cache = {}
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+scheduler = BackgroundScheduler()
+
+
+def fetch_and_cache_deals():
+    print("Fetching all deals and stores...")
+    get_all_deals()
+
+def fetch_and_cache_stores():
+    print("Fetching all stores...")
+    get_stores()
 
 def get_stores():
     url = "https://www.cheapshark.com/api/1.0/stores"
     response = requests.get(url)
-    cache["stores"] = response.json()
-    return response.json() if response.status_code == 200 else []
+    if response.status_code == 200:
+        cache["stores"] = response.json()
+        return response.json()
+    return []
 
 def get_store_ids():
     stores = get_stores()
@@ -58,17 +83,15 @@ def get_all_deals():
     cache["deals"] = all_deals
     return all_deals
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(get_all_deals, 'interval', hours=1)
-    scheduler.add_job(get_stores, 'interval', hours=12)
+
+    print("App started, now scheduling background jobs...")
+    scheduler.add_job(fetch_and_cache_deals, 'interval', hours=1)
+    scheduler.add_job(fetch_and_cache_stores, 'interval', hours=12)
     scheduler.start()
 
-
-    print("Starting background jobs for data fetching...")
-    get_all_deals()
-    get_stores()
 
     yield
     scheduler.shutdown()
@@ -76,20 +99,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Allow CORS from all origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 @app.get("/deals/")
 def get_cached_deals(store_name: str = None):
     deals = cache.get("deals")
     if not deals:
-        return JSONResponse(content={"error": "No cached deals available."}, status_code=503)
+        return {"error": "No cached deals available."}, 503
 
     if store_name:
         store_deals = deals.get(store_name)
@@ -103,7 +117,7 @@ def get_cached_deals(store_name: str = None):
 def get_top_3_deals():
     deals = cache.get("deals")
     if not deals:
-        return JSONResponse(content={"error": "No cached deals available."}, status_code=503)
+        return {"error": "No cached deals available."}, 503
 
     all_deals = [deal for store in deals.values() for deal in store]
     top3 = sorted(all_deals, key=lambda d: float(d.get("price", 9999)))[:3]
@@ -113,5 +127,5 @@ def get_top_3_deals():
 def get_store_details():
     stores = cache.get("stores")
     if stores:
-        return JSONResponse(content={"source": "disk", "stores": stores})
-    return JSONResponse(content={"error": "No cached stores available."}, status_code=503)
+        return {"source": "disk", "stores": stores}
+    return {"error": "No cached stores available."}, 503
