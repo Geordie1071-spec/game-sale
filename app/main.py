@@ -3,12 +3,24 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import time
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
-import requests
+import requests,os,json
 from contextlib import asynccontextmanager
 
 cache = {}
+DATA_DIR = "data"
+DEALS_FILE = os.path.join(DATA_DIR, "deals.json")
+STORES_FILE = os.path.join(DATA_DIR, "stores.json")
 
+def save_json(path, data):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
 
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
 
 
 
@@ -24,7 +36,9 @@ def get_stores():
     url = "https://www.cheapshark.com/api/1.0/stores"
     response = requests.get(url)
     if response.status_code == 200:
-        cache["stores"] = response.json()
+        stores = response.json()
+        cache["stores"] = stores
+        save_json(STORES_FILE, stores)
         return response.json()
     return []
 
@@ -69,6 +83,7 @@ def get_all_deals():
         all_deals[name] = get_deals(id)
         time.sleep(30)
     cache["deals"] = all_deals
+    save_json(DEALS_FILE, all_deals)
     return all_deals
 
 
@@ -81,6 +96,13 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     fetch_and_cache_deals()
     fetch_and_cache_stores()
+    cached_deals = load_json(DEALS_FILE)
+    cached_stores = load_json(STORES_FILE)
+
+    if cached_deals:
+        cache["deals"] = cached_deals
+    if cached_stores:
+        cache["stores"] = cached_stores
 
     yield
 
