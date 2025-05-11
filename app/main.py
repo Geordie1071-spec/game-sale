@@ -76,7 +76,7 @@ def get_deals(store_id):
 def get_all_deals():
     all_deals = {}
     store_ids = get_store_ids()
-    for st in store_ids:
+    for st in store_ids[:1]:
         name = st["name"]
         id = st["id"]
         print(f"Getting deals for {name}...")
@@ -91,7 +91,7 @@ def get_all_deals():
 async def lifespan(app: FastAPI):
 
     print("App started, now scheduling background jobs...")
-    scheduler.add_job(fetch_and_cache_deals, 'interval', hours=1)
+    scheduler.add_job(fetch_and_cache_deals, 'interval', hours=12)
     scheduler.add_job(fetch_and_cache_stores, 'interval', hours=12)
     scheduler.start()
     fetch_and_cache_deals()
