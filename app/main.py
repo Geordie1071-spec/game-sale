@@ -65,6 +65,7 @@ def get_deals(store_id):
             "pageNumber": page,
             "storeID": store_id
         })
+        print(f"Status code: {response.status_code}")
         if response.status_code == 200:
             try:
                 response_data = response.json()
