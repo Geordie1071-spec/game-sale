@@ -167,3 +167,14 @@ def get_store_details():
         return {"source": "disk", "stores": stores}
     return {"error": "No cached stores available."}, 503
 
+@app.get("/test_connection")
+def test_connection():
+    url = "https://www.cheapshark.com/api/1.0/stores"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return {"status": "success", "data": response.json()}
+        else:
+            return {"status": "failed", "message": f"Failed with status code: {response.status_code}"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "failed", "message": str(e)}
