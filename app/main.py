@@ -170,8 +170,11 @@ def get_store_details():
 @app.get("/test_connection")
 def test_connection():
     url = "https://www.cheapshark.com/api/1.0/stores"
+    headers = {
+        "User-Agent": "YourAppName/1.0 (contact@yourdomain.com)"
+    }
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         if response.status_code == 200:
             return {"status": "success", "data": response.json()}
         else:
