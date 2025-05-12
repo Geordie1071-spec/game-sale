@@ -76,7 +76,7 @@ def get_deals(store_id):
 def get_all_deals():
     all_deals = {}
     store_ids = get_store_ids()
-    for st in store_ids[:1]:
+    for st in store_ids:
         name = st["name"]
         id = st["id"]
         print(f"Getting deals for {name}...")
