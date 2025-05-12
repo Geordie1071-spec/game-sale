@@ -18,8 +18,16 @@ def save_json(path, data):
 
 def load_json(path):
     if os.path.exists(path):
+        print(f"Found {path}, checking contents...")
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            content = f.read()
+            print(f"First 300 chars of {path}: {content[:300]}")
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON: {e}")
+                return None
+    print(f"{path} not found.")
     return None
 
 
