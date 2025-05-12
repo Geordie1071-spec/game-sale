@@ -96,8 +96,14 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     fetch_and_cache_deals()
     fetch_and_cache_stores()
+
+    print("Loading cached deals from:", DEALS_FILE)
+    print("Loading cached stores from:", STORES_FILE)
     cached_deals = load_json(DEALS_FILE)
     cached_stores = load_json(STORES_FILE)
+
+    print("Loaded deals:", "YES" if cached_deals else "NO")
+    print("Loaded stores:", "YES" if cached_stores else "NO")
 
     if cached_deals:
         cache["deals"] = cached_deals
